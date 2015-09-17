@@ -235,7 +235,7 @@ wait_for_stream({xmlstreamelement, _}, StateData) ->
 wait_for_stream({xmlstreamend, _}, StateData) ->
     c2s_stream_error(?INVALID_XML_ERR, StateData);
 wait_for_stream({xmlstreamerror, _}, StateData) ->
-    send_header(StateData, ?MYNAME, "1.0", ""),
+    send_header(StateData, ?MYNAME, <<"1.0">>, ""),
     c2s_stream_error(?INVALID_XML_ERR, StateData);
 wait_for_stream(closed, StateData) ->
     {stop, normal, StateData}.
@@ -288,7 +288,7 @@ stream_start_by_protocol_version(_Pre_1_0, #state{lang = Lang, server = Server} 
     end.
 
 stream_start_negotiate_features(#state{} = S) ->
-    send_header(S, S#state.server, "1.0", default_language()),
+    send_header(S, S#state.server, <<"1.0">>, default_language()),
     case {S#state.authenticated, S#state.resource} of
         {false, _} ->
             stream_start_features_before_auth(S);
@@ -438,7 +438,7 @@ get_xml_lang(Attrs) ->
 
 default_language() ->
     case ?MYLANG of
-        undefined -> "en";
+        undefined -> <<"en">>;
         DL -> DL
     end.
 
@@ -1155,7 +1155,7 @@ handle_info({'DOWN', Monitor, _Type, _Object, _Info}, _StateName, StateData)
 handle_info(system_shutdown, StateName, StateData) ->
     case StateName of
         wait_for_stream ->
-            send_header(StateData, ?MYNAME, "1.0", "en"),
+            send_header(StateData, ?MYNAME, <<"1.0">>, <<"en">>),
             send_element(StateData, ?SERR_SYSTEM_SHUTDOWN),
             send_trailer(StateData),
             ok;
@@ -1575,7 +1575,7 @@ send_and_maybe_buffer_stanza({_, _, Stanza} = Packet, State, StateName)->
 
 -spec new_id() -> string().
 new_id() ->
-    randoms:get_string().
+    iolist_to_binary(randoms:get_string()).
 
 
 -spec is_auth_packet(El :: jlib:xmlel()) -> boolean().
