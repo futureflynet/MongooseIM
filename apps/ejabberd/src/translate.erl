@@ -28,8 +28,6 @@
 -author('alexey@process-one.net').
 
 -export([start/0,
-         load_dir/1,
-         load_file/2,
          translate/2]).
 
 -include("ejabberd.hrl").
@@ -147,10 +145,10 @@ translate(Msg) ->
     case ?MYLANG of
         undefined ->
             Msg;
-        "en" ->
+        <<"en">> ->
             Msg;
         Lang ->
-            LLang = ascii_tolower(Lang),
+            LLang = ascii_tolower(binary:bin_to_list(Lang)),
             case ets:lookup(translations, {LLang, Msg}) of
                 [{_, Trans}] ->
                     Trans;
