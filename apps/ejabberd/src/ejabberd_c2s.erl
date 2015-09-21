@@ -429,11 +429,11 @@ get_xml_lang(Attrs) ->
             %% specify limited buffer sizes for
             %% language tags MUST allow for
             %% language tags of at least 35 characters.
-            binary_to_list(Lang1);
+            Lang1;
         _ ->
             %% Do not store long language tag to
             %% avoid possible DoS/flood attacks
-            ""
+           <<>>
     end.
 
 default_language() ->
@@ -952,7 +952,7 @@ session_established2(El, StateData) ->
                     case StateData#state.lang of
                         <<>> -> NewEl1;
                         Lang ->
-                            xml:replace_tag_attr(<<"xml:lang">>, list_to_binary(Lang), NewEl1)
+                            xml:replace_tag_attr(<<"xml:lang">>, Lang, NewEl1)
                     end;
                 _ ->
                     NewEl1
@@ -1511,11 +1511,11 @@ send_element(#state{server = Server} = StateData, El) ->
 send_header(StateData, Server, Version, Lang)
   when StateData#state.xml_socket ->
     VersionAttr = case Version of
-                      "" -> [];
+                      <<>> -> [];
                       _ -> [{<<"version">>, Version}]
                   end,
     LangAttr = case Lang of
-                   "" -> [];
+                   <<>> -> [];
                    _ -> [{<<"xml:lang">>, Lang}]
                end,
     Header = {xmlstreamstart,
@@ -1529,11 +1529,11 @@ send_header(StateData, Server, Version, Lang)
     (StateData#state.sockmod):send_xml(StateData#state.socket, Header);
 send_header(StateData, Server, Version, Lang) ->
     VersionStr = case Version of
-                     "" -> "";
+                    <<>> -> [];
                      _ -> [" version='", Version, "'"]
                  end,
     LangStr = case Lang of
-                  "" -> "";
+                  <<>> -> [];
                   _ -> [" xml:lang='", Lang, "'"]
               end,
     Header = list_to_binary(io_lib:format(?STREAM_HEADER,
@@ -2217,7 +2217,7 @@ process_unauthenticated_stanza(StateData, El) ->
                     case StateData#state.lang of
                         <<>> -> El;
                         Lang ->
-                            xml:replace_tag_attr(<<"xml:lang">>, list_to_binary(Lang), El)
+                            xml:replace_tag_attr(<<"xml:lang">>, Lang, El)
                     end;
                 _ ->
                     El
