@@ -1540,14 +1540,14 @@ prepare_room_queue(StateData) ->
     end.
 
 -spec is_first_session(mod_muc:nick(), state()) -> boolean().
-is_first_session(Nick, StateData) -> 
+is_first_session(Nick, StateData) ->
     case ?DICT:find(Nick, StateData#state.sessions) of
         {ok, _Val} -> false;
         error -> true
     end.
 
 -spec is_last_session(mod_muc:nick(), state()) -> boolean().
-is_last_session(Nick, StateData) -> 
+is_last_session(Nick, StateData) ->
     case ?DICT:find(Nick, StateData#state.sessions) of
         {ok, [_Val]} -> true;
         _ -> false
@@ -1580,12 +1580,12 @@ remove_online_user(JID, StateData) ->
 
 -spec remove_online_user(ejabberd:jid(), state(), Reason :: binary()) -> state().
 remove_online_user(JID, StateData, Reason) ->
-    
+
     LJID = jlib:jid_tolower(JID),
     {ok, #user{nick = Nick}} =
         ?DICT:find(LJID, StateData#state.users),
     Sessions = case is_last_session(Nick, StateData) of
-        true -> 
+        true ->
             add_to_log(leave, {Nick, Reason}, StateData),
             tab_remove_online_user(JID, StateData),
             ?DICT:erase(Nick, StateData#state.sessions);
@@ -1595,7 +1595,7 @@ remove_online_user(JID, StateData, Reason) ->
             ?DICT:update(Nick, F, StateData#state.sessions)
     end,
     Users = ?DICT:erase(LJID, StateData#state.users),
-    
+
     StateData#state{users = Users, sessions = Sessions}.
 
 
@@ -2108,7 +2108,7 @@ send_new_presence_un(NJID, StateData) ->
 send_new_presence_un(NJID, Reason, StateData) ->
     {ok, #user{ nick = Nick }} = ?DICT:find(jlib:jid_tolower(NJID), StateData#state.users),
     case is_last_session(Nick, StateData) of
-        true -> 
+        true ->
             send_new_presence(NJID, Reason, StateData);
         false ->
             UserJIDs = ?DICT:fetch(Nick, StateData#state.sessions),
@@ -3301,7 +3301,7 @@ get_config(Lang, StateData, From) ->
     {MaxUsersRoomInteger, MaxUsersRoomString} =
     case get_max_users(StateData) of
         N when is_integer(N) ->
-        {N, erlang:integer_to_list(N)};
+        {N, erlang:integer_to_binary(N)};
         _ -> {0, <<"none">>}
     end,
     Res =
@@ -3358,9 +3358,9 @@ get_config(Lang, StateData, From) ->
                                                       children = [#xmlcdata{content = <<"none">>}]}]}]
                        end ++
                        [#xmlel{name = <<"option">>,
-                               attrs = [{<<"label">>, erlang:integer_to_list(N)}],
+                               attrs = [{<<"label">>, erlang:integer_to_binary(N)}],
                                children = [#xmlel{name = <<"value">>,
-                                                  children = [#xmlcdata{content = erlang:integer_to_list(N)}]}]} ||
+                                                  children = [#xmlcdata{content = erlang:integer_to_binary(N)}]}]} ||
                                                                       N <- lists:usort([ServiceMaxUsers, DefaultRoomMaxUsers, MaxUsersRoomInteger |
                                                                                ?MAX_USERS_DEFAULT_LIST]), N =< ServiceMaxUsers]},
      #xmlel{name = <<"field">>,
@@ -3819,7 +3819,7 @@ iq_disco_info_extras(Lang, StateData) ->
                         rfield(<<"Room description">>, <<"muc#roominfo_description">>,
                             RoomDescription, Lang),
                         rfield(<<"Number of occupants">>, <<"muc#roominfo_occupants">>,
-                            (integer_to_list(Len)), Lang)
+                            (integer_to_binary(Len)), Lang)
                        ]}].
 
 
@@ -4216,7 +4216,7 @@ tab_count_user(JID) ->
     end.
 
 element_size(El) ->
-    size(xml:element_to_binary(El)).
+    exml:xml_size(El).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Routing functions

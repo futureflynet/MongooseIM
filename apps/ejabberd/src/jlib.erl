@@ -677,7 +677,7 @@ rsm_encode_first(undefined, undefined, Arr) ->
 rsm_encode_first(First, undefined, Arr) ->
     [#xmlel{name = <<"first">>, children = [#xmlcdata{content = First}]}|Arr];
 rsm_encode_first(First, Index, Arr) ->
-    [#xmlel{name = <<"first">>, attrs = [{<<"index">>, i2l(Index)}],
+    [#xmlel{name = <<"first">>, attrs = [{<<"index">>, i2b(Index)}],
             children = [#xmlcdata{content = First}]}|Arr].
 
 
@@ -691,13 +691,11 @@ rsm_encode_last(Last, Arr) ->
                        Arr :: [xmlel()]) -> [xmlel()].
 rsm_encode_count(undefined, Arr)-> Arr;
 rsm_encode_count(Count, Arr)->
-    [#xmlel{name = <<"count">>, children = [#xmlcdata{content = i2l(Count)}]} | Arr].
+    [#xmlel{name = <<"count">>, children = [#xmlcdata{content = i2b(Count)}]} | Arr].
 
-
--spec i2l(string() | pos_integer()) -> string().
-i2l(I) when is_integer(I) -> integer_to_list(I);
-i2l(L) when is_list(L)    -> L.
-
+-spec i2b(binary() | pos_integer()) -> binary().
+i2b(I) when is_integer(I) -> integer_to_binary(I);
+i2b(L) when is_binary(L)    -> L.
 
 -type tzoffset() :: {TZh :: integer(), TZm :: integer()}.
 -type tz() :: 'utc' | {Sign :: string(), tzoffset()} | tzoffset().
