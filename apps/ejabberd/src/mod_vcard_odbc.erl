@@ -217,20 +217,20 @@ make_val(RestrictionSQL, Field, Val) ->
 record_to_item(_CallerVHost, {Username, VCardVHost, FN, Family, Given, Middle,
              Nickname, BDay, CTRY, Locality,
              EMail, OrgName, OrgUnit}) ->
-    #xmlel{name = "item",
+    #xmlel{name = <<"item">>,
            children = [
-                        ?FIELD("jid", [Username, "@", VCardVHost]),
-                        ?FIELD("fn", FN),
-                        ?FIELD("last", Family),
-                        ?FIELD("first", Given),
-                        ?FIELD("middle", Middle),
-                        ?FIELD("nick", Nickname),
-                        ?FIELD("bday", BDay),
-                        ?FIELD("ctry", CTRY),
-                        ?FIELD("locality", Locality),
-                        ?FIELD("email", EMail),
-                        ?FIELD("orgname", OrgName),
-                        ?FIELD("orgunit", OrgUnit)
+                        ?FIELD(<<"jid">>, [Username, "@", VCardVHost]),
+                        ?FIELD(<<"fn">>, FN),
+                        ?FIELD(<<"last">>, Family),
+                        ?FIELD(<<"first">>, Given),
+                        ?FIELD(<<"middle">>, Middle),
+                        ?FIELD(<<"nick">>, Nickname),
+                        ?FIELD(<<"bday">>, BDay),
+                        ?FIELD(<<"ctry">>, CTRY),
+                        ?FIELD(<<"locality">>, Locality),
+                        ?FIELD(<<"email">>, EMail),
+                        ?FIELD(<<"orgname">>, OrgName),
+                        ?FIELD(<<"orgunit">>, OrgUnit)
                        ]}.
 
 
