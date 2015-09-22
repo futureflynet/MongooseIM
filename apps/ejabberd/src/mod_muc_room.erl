@@ -3301,7 +3301,7 @@ get_config(Lang, StateData, From) ->
     {MaxUsersRoomInteger, MaxUsersRoomString} =
     case get_max_users(StateData) of
         N when is_integer(N) ->
-        {N, erlang:integer_to_binary(N)};
+        {N, integer_to_binary(N)};
         _ -> {0, <<"none">>}
     end,
     Res =
@@ -3358,9 +3358,9 @@ get_config(Lang, StateData, From) ->
                                                       children = [#xmlcdata{content = <<"none">>}]}]}]
                        end ++
                        [#xmlel{name = <<"option">>,
-                               attrs = [{<<"label">>, erlang:integer_to_binary(N)}],
+                               attrs = [{<<"label">>, integer_to_binary(N)}],
                                children = [#xmlel{name = <<"value">>,
-                                                  children = [#xmlcdata{content = erlang:integer_to_binary(N)}]}]} ||
+                                                  children = [#xmlcdata{content = integer_to_binary(N)}]}]} ||
                                                                       N <- lists:usort([ServiceMaxUsers, DefaultRoomMaxUsers, MaxUsersRoomInteger |
                                                                                ?MAX_USERS_DEFAULT_LIST]), N =< ServiceMaxUsers]},
      #xmlel{name = <<"field">>,
