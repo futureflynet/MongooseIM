@@ -215,7 +215,8 @@ get_user_resources(User, Server) ->
 
 -spec get_session_ip(User :: ejabberd:user(),
                      Server :: ejabberd:server(),
-                     Resource :: ejabberd:resource()) -> undefined | inet:ip_address().
+                     Resource :: ejabberd:resource()) ->
+    undefined | {inet:ip_address(), integer()}.
 get_session_ip(User, Server, Resource) ->
     LUser = jlib:nodeprep(User),
     LServer = jlib:nameprep(Server),
