@@ -1,0 +1,11 @@
+#!/bin/bash
+
+sudo cp tools/advanced.config /etc/riak/
+
+service riak start
+
+${1}riak-admin bucket-type create users '{"props":{"datatype":"map"}}'
+${1}riak-admin bucket-type activate users
+
+${1}riak-admin bucket-type create private '{"props":{"last_write_wins":true}}'
+${1}riak-admin bucket-type activate private

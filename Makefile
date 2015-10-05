@@ -49,12 +49,16 @@ test_preset: test_deps
 
 run: deps compile quickrun
 
-quickrun: etc/ejabberd.cfg
-	erl -sname mongooseim@localhost -setcookie ejabberd -pa deps/*/ebin apps/*/ebin -config rel/files/app.config -s ejabberd
+quickrun: etc/ejabberd.cfg etc/app.config certs_priv
+	erl -sname mongooseim@localhost -setcookie ejabberd -pa ebin deps/*/ebin apps/*/ebin -config etc/app.config -s mongooseim
 
 etc/ejabberd.cfg:
-	tools/generate_cfg.es etc/ejabberd.cfg
+	@mkdir -p $(@D)
+	tools/generate_cfg.es etc/ejabberd.cfg rel/files/ejabberd.cfg
 
+etc/app.config:
+	@mkdir -p $(@D)
+	tools/generate_cfg.es etc/app.config rel/files/app.config
 
 cover_test: test_deps
 	cd test/ejabberd_tests; make cover_test
@@ -75,10 +79,10 @@ eunit: rebar deps
 configure:
 	./tools/configure $(filter-out $@,$(MAKECMDGOALS))
 
-rel: rebar deps
+rel: certs rebar deps
 	./rebar compile generate -f
 
-devrel: $(DEVNODES)
+devrel: certs $(DEVNODES)
 
 $(DEVNODES): rebar deps compile deps_dev
 	@echo "building $@"
@@ -87,8 +91,6 @@ $(DEVNODES): rebar deps compile deps_dev
 
 deps_dev:
 	mkdir -p dev
-	cp rel/files/test_cert.pem /tmp/server.pem
-	cp rel/files/sample_external_auth.py /tmp
 
 devclean:
 	rm -rf dev/*
@@ -98,6 +100,21 @@ cover_report: /tmp/mongoose_combined.coverdata
 
 relclean:
 	rm -rf rel/mongooseim
+
+certs: fake_cert.pem fake_server.pem
+
+certs_priv: certs
+	@mkdir -p priv/ssl
+	@cp fake_*.pem priv/ssl
+
+fake_cert.pem:
+	openssl req \
+	-x509 -nodes -days 365 \
+	-subj '/C=PL/ST=ML/L=Krakow/CN=mongoose-im' \
+	-newkey rsa:2048 -keyout fake_key.pem -out fake_cert.pem
+
+fake_server.pem:
+	cat fake_cert.pem fake_key.pem > fake_server.pem
 
 COMBO_PLT = .mongooseim_combo_dialyzer.plt
 DEPS_LIBS     = $(wildcard deps/*/ebin/*.beam)
@@ -122,8 +139,8 @@ cleanplt:
 	rm $(COMBO_PLT)
 
 
-test_deps: rebar
-	./rebar -C rebar.tests.config get-deps
+test_deps:
+	cd test/ejabberd_tests; make get-deps
 
 %:
 	@:
