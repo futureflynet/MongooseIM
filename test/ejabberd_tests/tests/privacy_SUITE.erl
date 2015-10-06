@@ -42,6 +42,7 @@ management_test_cases() ->
     get_many_lists,
     get_nonexistent_list,
     set_list,
+     get_all_lists,
     activate,
     activate_nonexistent,
     deactivate,

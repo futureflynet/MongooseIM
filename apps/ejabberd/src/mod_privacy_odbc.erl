@@ -40,11 +40,16 @@
          set_default_list/3,
          remove_privacy_list/3,
          replace_privacy_list/4,
-         remove_user/2]).
+         remove_user/2,
+         block_user/3,
+         unblock_user/3,
+         unblock_all/2]).
 
 -include("ejabberd.hrl").
 -include("jlib.hrl").
 -include("mod_privacy.hrl").
+
+-define(LIST_NAME, <<"block">>).
 
 init(_Host, _Opts) ->
     ok.
@@ -197,7 +202,112 @@ replace_privacy_list(LUser, LServer, Name, List) ->
 remove_user(LUser, LServer) ->
     sql_del_privacy_lists(LUser, LServer).
 
+%% XEP 0191 Blocking Command
+block_user(LUser, LServer, JIDList) ->
+    F = fun() ->
+        case get_default_list_name(LUser, LServer) of
+            none ->
+                sql_add_privacy_list(LUser, ?LIST_NAME),
+                {selected, [<<"id">>], [{I}]} =
+                sql_get_privacy_list_id_t(LUser, ?LIST_NAME),
+                ZippedWithNumbers = lists:zip(JIDList, lists:seq(1,length(JIDList))),
+                Items = lists:map(fun parse_jid_to_listitem/1, ZippedWithNumbers),
+                sql_set_privacy_list(I, lists:map(fun item_to_raw/1, Items)),
+                sql_set_default_privacy_list(LUser, ?LIST_NAME),
+                {?LIST_NAME, Items};
+            Name ->
+                BlockeeList = lists:map(fun jlib:jid_to_binary/1, JIDList),
+                %% FilteredJids Contains JIDs that are ready to be BLOCK
+                FilteredList = lists:filter(fun(J) -> not check_contact_is_blocked(LUser, J, Name) end, BlockeeList),
+                NewNumber = binary_to_integer(case sql_get_latest_block_ord(LUser, Name) of
+                    {selected, [<<"ord">>], [{Number}]} ->
+                        Number;
+                    _ ->
+                        <<"1">>
+                    end),
+                FilteredNormalized = lists:map(fun(BinJID) -> jlib:jid_to_lower(jlib:binary_to_jid(BinJID)) end, FilteredList),
+                ZippedWithNumbers = lists:zip(FilteredNormalized, lists:seq(NewNumber, NewNumber + length(FilteredNormalized) - 1)),
+                FilteredItemList = lists:map(fun parse_jid_to_listitem/1, ZippedWithNumbers),
+                RIRenumberedItems = lists:map(fun item_to_raw/1, FilteredItemList),
+                ID = case sql_get_privacy_list_id_t(LUser, Name) of
+                    {selected, [<<"id">>], [{I}]} ->
+                        I
+                end,
+                sql_block_contacts(ID, RIRenumberedItems),
+                {Name, FilteredItemList}
+        end
+    end,
+    case odbc_queries:sql_transaction(LServer, F) of
+        {atomic, {ListName, UniqueItems}} ->
+            {ok, {ListName, UniqueItems}};
+        {aborted, Reason} ->
+            {error, {aborted, Reason}};
+        {error, Reason} ->
+            {error, Reason}
+    end.
 
+unblock_user(LUser, LServer, JIDList) ->
+    F = fun () ->
+        case get_default_list_name(LUser, LServer) of
+        none ->
+            {error, no_default_list};
+        Name ->
+            BlockeeList = lists:map(fun jlib:jid_to_binary/1, JIDList),
+            FilteredList = lists:filter(fun(J) -> check_contact_is_blocked(LUser, J, Name) end, BlockeeList),   %% Contains JIDs that are ready to be UNBLOCKED
+            ID = case sql_get_privacy_list_id_t(LUser, Name) of
+                {selected, [<<"id">>], []} ->
+                    {error, cannot_create_list};
+                {selected, [<<"id">>], [{I}]} ->
+                    I
+            end,
+            FilteredNormalized = lists:map(fun(BinJid) -> jlib:jid_to_lower(jlib:binary_to_jid(BinJid)) end, FilteredList),
+            ZippedWithNumbers = lists:zip(FilteredNormalized, lists:seq(1,length(FilteredNormalized))),
+            FilteredItemList = lists:map(fun parse_jid_to_listitem/1, ZippedWithNumbers),
+            RIFiltered = lists:map(fun item_to_raw/1, FilteredItemList),
+            sql_unblock_contacts(ID, RIFiltered),
+            {Name, FilteredList}
+    end
+    end,
+    case odbc_queries:sql_transaction(LServer, F) of
+        {atomic, {error, Reason}} ->
+            {error, Reason};
+        {atomic, {Name, UniqueItems}} ->
+            {ok, {Name, UniqueItems}};
+        {aborted, Reason} ->
+            {error, {aborted, Reason}};
+        {error, Reason} ->
+            {error, Reason}
+    end.
+
+unblock_all(LUser, LServer) ->
+        case get_default_list_name(LUser, LServer) of
+        none ->
+            {error, no_default_list};
+        Name ->
+            case replace_privacy_list(LUser, LServer, Name, []) of
+                ok ->
+                    {ok, Name};
+                {error, Reason} ->
+                    {error, Reason}
+            end
+        end.
+
+check_contact_is_blocked(LUser, LContact, ListName) ->
+    case sql_check_contact_blocked(LUser, LContact, ListName) of
+        {selected, [<<"value">>], [{_}]} ->
+            true;
+        {selected, [<<"value">>], []} ->
+            false
+    end.
+
+parse_jid_to_listitem({JID, Number}) ->
+    #listitem{type=jid, action=deny, value=JID, order =  Number, match_all = true,
+              match_iq = true,
+              match_message = true,
+              match_presence_in = true,
+              match_presence_out = true}.
+
+%% Records are broken or smth?
 raw_to_item({BType, BValue, BAction, BOrder, BMatchAll, BMatchIQ,
          BMatchMessage, BMatchPresenceIn, BMatchPresenceOut}) ->
     {Type, Value} =
@@ -351,3 +461,22 @@ sql_del_privacy_lists(LUser, LServer) ->
     Username = ejabberd_odbc:escape(LUser),
     Server = ejabberd_odbc:escape(LServer),
     odbc_queries:del_privacy_lists(LServer, Server, Username).
+
+
+%% XEP 0191 Blocking Commands
+sql_check_contact_blocked(LUser, LContact, ListName) ->
+    Username = ejabberd_odbc:escape(LUser),
+    Contact = ejabberd_odbc:escape(LContact),
+    Name = ejabberd_odbc:escape(ListName),
+    odbc_queries:check_contact_blocked(Username, Contact, Name).
+
+sql_get_latest_block_ord(LUser, ListName) ->
+    Username = ejabberd_odbc:escape(LUser),
+    Name = ejabberd_odbc:escape(ListName),
+    odbc_queries:get_latest_ord(Username, Name).
+
+sql_block_contacts(ID, ContactList) ->
+    odbc_queries:block_contacts(ID, ContactList).
+
+sql_unblock_contacts(ID, ContactList) ->
+    odbc_queries:unblock_contacts(ID, ContactList).

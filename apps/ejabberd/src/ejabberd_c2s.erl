@@ -2123,7 +2123,7 @@ process_privacy_iq(From, To,
             case ejabberd_hooks:run_fold(
                    privacy_iq_set, StateData#state.server,
                    {error, ?ERR_FEATURE_NOT_IMPLEMENTED},
-                   [From, To, IQ]) of
+                   [From, To, IQ, StateData#state.privacy_list]) of
                 {result, R, NewPrivList} ->
                     {{result, R},
                      StateData#state{privacy_list = NewPrivList}};
